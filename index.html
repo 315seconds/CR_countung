@@ -440,6 +440,14 @@ function startHanger() {
 
 function goHome() { showScr('home'); initHome(); }
 let _clearArmed = false, _clearTimer;
+function resetClearBtn() {
+  const btn = document.getElementById('clear-btn-el');
+  if (!btn) return;
+  btn.textContent = '⚠ 세션 초기화';
+  btn.style.background = '';
+  btn.style.color = '';
+  btn.style.borderColor = '';
+}
 function clearAll() {
   const btn = document.getElementById('clear-btn-el');
   if (!_clearArmed) {
@@ -450,15 +458,13 @@ function clearAll() {
     btn.style.borderColor = 'var(--danger)';
     _clearTimer = setTimeout(() => {
       _clearArmed = false;
-      btn.textContent = '⚠ 세션 초기화';
-      btn.style.background = '';
-      btn.style.color = '';
-      btn.style.borderColor = '';
+      resetClearBtn();
     }, 3000);
     return;
   }
   clearTimeout(_clearTimer);
   _clearArmed = false;
+  resetClearBtn();
   localStorage.removeItem('charan2');
   S = { hangers: [], cur: { name: '', log: [] }, items: JSON.parse(JSON.stringify(MASTER)) };
   showScr('home');
