@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>차란 카운팅</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0A0A0A;
+  --s1: #141414;
+  --s2: #1C1C1C;
+  --s3: #252525;
+  --border: #2C2C2C;
+  --border2: #383838;
+  --acc: #F5C400;
+  --acc-dim: rgba(245,196,0,0.10);
+  --acc-glow: rgba(245,196,0,0.25);
+  --text: #EBEBEB;
+  --dim: #666666;
+  --dim2: #444444;
+  --danger: #FF5050;
+  --r: 10px;
+  --mono: 'Courier New', monospace;
+  --sans: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;}
+
+/* ── SCREENS ── */
+.scr{display:none;height:100vh;flex-direction:column;overflow:hidden;}
+.scr.on{display:flex;}
+
+/* ════════════════════════════════
+   HOME
+════════════════════════════════ */
+#home{background:var(--bg);}
+.home-top{background:var(--acc);padding:52px 24px 28px;}
+.home-top h1{font-size:28px;font-weight:900;color:#111;letter-spacing:-0.5px;}
+.home-top p{font-size:12px;color:#666;margin-top:4px;}
+.home-body{flex:1;overflow-y:auto;padding:24px 18px;}
+.field-label{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;display:block;}
+.big-input{width:100%;background:var(--s2);border:2px solid var(--border2);border-radius:var(--r);padding:15px 16px;color:var(--text);font-size:22px;font-weight:800;outline:none;transition:border-color .15s;}
+.big-input:focus{border-color:var(--acc);}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border-radius:var(--r);border:none;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .12s,transform .1s;font-family:var(--sans);}
+.btn:active{transform:scale(.96);opacity:.8;}
+.btn-acc{background:var(--acc);color:#111;}
+.btn-ghost{background:var(--s2);color:var(--text);border:1px solid var(--border2);}
+.btn-red{background:transparent;color:var(--danger);border:1.5px solid var(--danger);}
+.gap{height:10px;}
+.resume-card{background:var(--s1);border:1.5px solid var(--acc);border-radius:var(--r);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;}
+.resume-card .info span{display:block;font-size:13px;font-weight:800;color:var(--acc);}
+.resume-card .info small{font-size:11px;color:var(--dim);}
+.resume-btn{background:var(--acc);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:800;cursor:pointer;}
+
+/* ════════════════════════════════
+   COUNT SCREEN
+════════════════════════════════ */
+#count{position:relative;}
+
+/* Header */
+.cnt-hdr{background:var(--s1);border-bottom:1px solid var(--border);padding:12px 14px 0;flex-shrink:0;}
+.cnt-hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cnt-hanger{font-size:18px;font-weight:900;color:var(--acc);}
+.cnt-right{display:flex;align-items:center;gap:8px;}
+.cnt-badge{background:var(--acc);color:#111;font-family:var(--mono);font-size:13px;font-weight:900;padding:4px 11px;border-radius:20px;min-width:44px;text-align:center;}
+.icon-btn{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;padding:2px 4px;line-height:1;}
+
+/* Recent strip */
+.recent-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;}
+.recent-strip::-webkit-scrollbar{display:none;}
+.recent-label{font-size:11px;color:var(--dim);font-weight:700;letter-spacing:1px;white-space:nowrap;align-self:center;padding-right:4px;flex-shrink:0;}
+.recent-chip{flex-shrink:0;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;cursor:pointer;transition:background .15s,border-color .15s;display:flex;flex-direction:column;align-items:center;min-width:58px;}
+.recent-chip:active{background:var(--acc-glow);border-color:var(--acc);}
+.rc-num{font-family:var(--mono);font-size:11px;color:var(--acc);font-weight:700;}
+.rc-name{font-size:10px;color:var(--dim);margin-top:1px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis;}
+
+/* Search */
+.search-wrap{position:relative;margin-bottom:10px;}
+.search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:15px;pointer-events:none;}
+.search-in{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px 10px 36px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;}
+.search-in:focus{border-color:var(--acc);}
+.search-in::placeholder{color:var(--dim2);}
+.clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;display:none;}
+
+/* List */
+.list-wrap{flex:1;overflow-y:auto;overscroll-behavior:contain;}
+
+/* Brand group */
+.bg{border-bottom:1px solid var(--border);}
+.bg-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;background:var(--bg);}
+.bg-hdr:active{background:var(--s1);}
+.bg-name{font-size:13px;font-weight:800;letter-spacing:0.2px;}
+.bg-right{display:flex;align-items:center;gap:8px;}
+.bg-cnt{background:var(--acc);color:#111;font-size:10px;font-weight:900;padding:2px 7px;border-radius:10px;font-family:var(--mono);display:none;}
+.bg-cnt.on{display:inline-block;}
+.bg-arr{color:var(--dim);font-size:11px;transition:transform .2s;}
+.bg.open .bg-arr{transform:rotate(180deg);}
+.bg-items{display:none;}
+.bg.open .bg-items{display:block;}
+
+/* Item row */
+.ir{display:flex;align-items:center;padding:11px 14px;gap:10px;border-top:1px solid var(--border);background:var(--s1);cursor:pointer;transition:background .12s;position:relative;overflow:hidden;}
+.ir:active{background:var(--s2);}
+.ir.tapped{background:var(--acc-dim);}
+.ir-num{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:28px;flex-shrink:0;}
+.ir-info{flex:1;min-width:0;}
+.ir-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ir-price{font-size:11px;color:var(--dim);margin-top:1px;}
+.ir-tag{background:var(--acc);color:#111;font-family:var(--mono);font-size:11px;font-weight:900;padding:3px 8px;border-radius:12px;min-width:24px;text-align:center;flex-shrink:0;}
+.ir-tag.zero{background:var(--s3);color:var(--dim);}
+.ir-tag.once{background:transparent;color:var(--acc);border:1.5px solid var(--acc);font-size:13px;}
+
+/* Tap flash animation */
+@keyframes tapPulse {
+  0%{background:var(--acc-glow);}
+  100%{background:var(--acc-dim);}
+}
+.ir.flash{animation:tapPulse .35s ease-out;}
+
+/* Bottom bar */
+.cnt-bot{background:var(--s1);border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;flex-shrink:0;}
+.cnt-bot .btn{padding:13px 8px;font-size:13px;border-radius:9px;}
+.bot-log{flex:1;background:var(--s2);color:var(--text);border:1px solid var(--border2);}
+.bot-undo{width:52px;flex-shrink:0;background:var(--s2);color:var(--dim);border:1px solid var(--border2);}
+.bot-done{flex:1.5;background:var(--acc);color:#111;}
+.bot-dl{width:52px;flex-shrink:0;background:var(--s2);color:var(--dim);border:1px solid var(--border2);}
+
+/* FAB */
+.fab{position:absolute;right:14px;bottom:76px;width:46px;height:46px;border-radius:50%;background:var(--s3);border:1.5px solid var(--border2);color:var(--dim);font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.6);}
+.fab:active{transform:scale(.9);}
+
+/* ════════════════════════════════
+   LOG PANEL (slide-up)
+════════════════════════════════ */
+.log-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:flex-end;}
+.log-overlay.on{display:flex;}
+.log-panel{background:var(--s1);border-radius:20px 20px 0 0;width:100%;max-height:80vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);}
+.log-panel-hdr{padding:16px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.log-panel-hdr h3{font-size:16px;font-weight:800;}
+.log-close{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;}
+.log-list{flex:1;overflow-y:auto;padding:0;}
+.log-row{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);gap:10px;}
+.log-row:last-child{border-bottom:none;}
+.log-seq{font-family:var(--mono);font-size:12px;color:var(--dim);min-width:28px;font-weight:700;}
+.log-num{font-family:var(--mono);font-size:13px;color:var(--acc);font-weight:900;min-width:32px;}
+.log-info{flex:1;}
+.log-brand{font-size:10px;color:var(--dim);}
+.log-name{font-size:13px;font-weight:600;}
+.log-price{font-size:11px;color:var(--dim);}
+.log-empty{text-align:center;padding:48px 24px;color:var(--dim);font-size:14px;}
+
+/* ════════════════════════════════
+   SUMMARY SCREEN
+════════════════════════════════ */
+#summary{background:var(--bg);}
+.sum-hdr{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.back-btn{background:none;border:none;color:var(--acc);font-size:22px;cursor:pointer;}
+.sum-title{font-size:17px;font-weight:800;}
+.sum-sub{margin-left:auto;font-size:11px;color:var(--dim);}
+.sum-list{flex:1;overflow-y:auto;padding:12px 12px 90px;}
+.hcard{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;}
+.hcard-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;cursor:pointer;}
+.hcard-hdr:active{opacity:.8;}
+.hcard-name{font-weight:800;font-size:14px;}
+.hcard-meta{font-size:11px;color:var(--dim);margin-top:2px;}
+.hcard-badge{background:var(--acc-dim);color:var(--acc);font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;font-family:var(--mono);}
+.hcard-body{border-top:1px solid var(--border);display:none;}
+.hcard.open .hcard-body{display:block;}
+.hlog-row{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);gap:8px;}
+.hlog-row:last-child{border-bottom:none;}
+.hlog-seq{font-family:var(--mono);font-size:11px;color:var(--dim2);min-width:24px;}
+.hlog-num{font-family:var(--mono);font-size:12px;color:var(--acc);font-weight:700;min-width:32px;}
+.hlog-name{flex:1;font-size:12px;}
+.hlog-price{font-size:11px;color:var(--dim);}
+.sum-bot{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;z-index:100;}
+.sum-bot .btn{flex:1;padding:13px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--dim);}
+.empty-icon{font-size:48px;margin-bottom:12px;}
+
+/* ════════════════════════════════
+   MODAL
+════════════════════════════════ */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:none;align-items:flex-end;}
+.modal-ov.on{display:flex;}
+.modal-box{background:var(--s1);border-radius:20px 20px 0 0;padding:24px 18px 40px;width:100%;}
+.modal-box h3{font-size:17px;font-weight:800;margin-bottom:18px;}
+.mf{margin-bottom:13px;}
+.mf label{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:1.2px;text-transform:uppercase;display:block;margin-bottom:6px;}
+.m-input{width:100%;background:var(--bg);border:2px solid var(--border2);border-radius:9px;padding:12px 13px;color:var(--text);font-size:15px;outline:none;font-family:var(--sans);}
+.m-input:focus{border-color:var(--acc);}
+.mrow{display:flex;gap:10px;}
+.mrow .mf{flex:1;}
+.m-actions{display:flex;gap:10px;margin-top:18px;}
+.m-actions .btn{flex:1;padding:14px;}
+
+/* TOAST */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-size:13px;font-weight:700;padding:10px 20px;border-radius:20px;z-index:999;transition:transform .25s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.toast.acc{background:var(--acc);color:#111;border-color:var(--acc);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ HOME ══ -->
+<div class="scr on" id="home">
+  <div class="home-top">
+    <h1>🏷️ 차란 카운팅</h1>
+    <p>도매 현장 순번 기록 도구</p>
+  </div>
+  <div class="home-body">
+    <!-- 진행중 행거만 이어하기 표시 -->
+    <div id="resume-card" style="display:none;">
+      <div class="resume-card">
+        <div class="info">
+          <span id="resume-info">진행중인 행거</span>
+          <small id="resume-sub"></small>
+        </div>
+        <button class="resume-btn" onclick="resumeSession()">이어하기 →</button>
+      </div>
+    </div>
+    <!-- 완료된 행거 정보 (이어하기 없음) -->
+    <div id="done-card" style="display:none;margin-bottom:18px;">
+      <div style="background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <span style="font-size:13px;font-weight:700;color:var(--text);" id="done-info"></span><br>
+          <small style="font-size:11px;color:var(--dim);">완료된 행거</small>
+        </div>
+        <button onclick="goSummary()" style="background:none;border:none;color:var(--dim);font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;">내역 보기</button>
+      </div>
+    </div>
+    <label class="field-label">새 행거명 입력</label>
+    <input class="big-input" id="h-name-in" type="text" placeholder="예: 영훈-1" autocomplete="off" autocorrect="off">
+    <div class="gap"></div>
+    <button class="btn btn-acc" onclick="startHanger()">▶ 카운팅 시작</button>
+    <div style="height:16px;"></div>
+    <button class="btn btn-ghost" onclick="goSummary()">📋 전체 내역 보기</button>
+    <div class="gap"></div>
+    <button class="btn btn-ghost" onclick="downloadExcel()">⬇ 엑셀 다운로드</button>
+    <div style="height:20px;"></div>
+    <button class="btn btn-red" id="clear-btn-el" onclick="clearAll()">⚠ 세션 초기화</button>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ══ COUNT ══ -->
+<div class="scr" id="count">
+  <!-- Header -->
+  <div class="cnt-hdr">
+    <div class="cnt-hdr-top">
+      <div>
+        <div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1px;margin-bottom:2px;">현재 행거</div>
+        <div class="cnt-hanger" id="cnt-hanger-lbl">—</div>
+      </div>
+      <div class="cnt-right">
+        <div class="cnt-badge" id="cnt-badge">0</div>
+        <button class="icon-btn" onclick="openLogPanel()" title="기록 보기">📋</button>
+        <button class="icon-btn" onclick="goHome()" title="홈">🏠</button>
+      </div>
+    </div>
+    <!-- Recent strip -->
+    <div class="recent-strip" id="recent-strip">
+      <span class="recent-label">최근</span>
+      <span id="recent-empty" style="font-size:11px;color:var(--dim2);align-self:center;">탭하면 여기 표시돼요</span>
+    </div>
+    <!-- Search -->
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input class="search-in" id="search-in" type="text" placeholder="브랜드 / 품목 / 번호 검색..." autocomplete="off" autocorrect="off" oninput="onSearch()">
+      <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
+
+  <!-- Brand list -->
+  <div class="list-wrap" id="brand-list"></div>
+
+  <!-- FAB: add item -->
+  <button class="fab" onclick="openAddModal()">+</button>
+
+  <!-- Bottom bar -->
+  <div class="cnt-bot">
+    <button class="btn bot-log" onclick="openLogPanel()">📋 기록 <span id="bot-log-cnt">0</span>개</button>
+    <button class="btn bot-undo" onclick="undoLast()" title="실행취소">↩</button>
+    <button class="btn bot-done" onclick="completeHanger()">✅ 완료</button>
+    <button class="btn bot-dl" onclick="downloadExcel()" title="저장">⬇</button>
+  </div>
+</div>
+
+<!-- ══ SUMMARY ══ -->
+<div class="scr" id="summary">
+  <div class="sum-hdr">
+    <button class="back-btn" onclick="backFromSummary()">←</button>
+    <div class="sum-title">전체 내역</div>
+    <div class="sum-sub" id="sum-sub"></div>
+  </div>
+  <div class="sum-list" id="sum-list"></div>
+  <div class="sum-bot">
+    <button class="btn btn-ghost" onclick="backFromSummary()">← 돌아가기</button>
+    <button class="btn btn-acc" onclick="downloadExcel()">⬇ 엑셀 다운로드</button>
+  </div>
+</div>
+
+<!-- ══ LOG PANEL ══ -->
+<div class="log-overlay" id="log-overlay" onclick="onLogOverlayClick(event)">
+  <div class="log-panel">
+    <div class="log-panel-hdr">
+      <h3>📋 <span id="log-hanger-name"></span> 기록</h3>
+      <button class="log-close" onclick="closeLogPanel()">✕</button>
+    </div>
+    <div class="log-list" id="log-list"></div>
+  </div>
+</div>
+
+<!-- ══ ADD MODAL ══ -->
+<div class="modal-ov" id="modal-add" onclick="onModalClick(event)">
+  <div class="modal-box">
+    <h3>➕ 항목 즉석 추가</h3>
+    <div class="mf">
+      <label>브랜드명</label>
+      <input class="m-input" id="add-brand" type="text" placeholder="예: 나이키">
+    </div>
+    <div class="mrow">
+      <div class="mf">
+        <label>번호 (자동입력)</label>
+        <input class="m-input" id="add-num" type="text" placeholder="244">
+      </div>
+      <div class="mf">
+        <label>단가 (원)</label>
+        <input class="m-input" id="add-price" type="number" placeholder="10000">
+      </div>
+    </div>
+    <div class="mf">
+      <label>품목명</label>
+      <input class="m-input" id="add-item" type="text" placeholder="예: 롱슬리브">
+    </div>
+    <div class="m-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">취소</button>
+      <button class="btn btn-acc" onclick="confirmAdd()">추가하기</button>
+    </div>
+  </div>
+</div>
+<script>
+// ══ DATA ══
+const MASTER = [{"brand": "칼하트", "num": "001", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "칼하트", "num": "002", "item": "후드1", "price": 15000}, {"brand": "칼하트", "num": "003", "item": "맨투맨", "price": 15000}, {"brand": "칼하트", "num": "004", "item": "반팔셔츠", "price": 15000}, {"brand": "칼하트", "num": "005", "item": "후드2", "price": 20000}, {"brand": "칼하트", "num": "006", "item": "청바지", "price": 20000}, {"brand": "칼하트", "num": "007", "item": "기타팬츠", "price": 20000}, {"brand": "칼하트", "num": "008", "item": "긴발셔츠", "price": 20000}, {"brand": "칼하트", "num": "009", "item": "워크팬츠", "price": 30000}, {"brand": "칼하트", "num": "010", "item": "기타 아우터(WIP등,정가품확인전)", "price": 50000}, {"brand": "칼하트", "num": "011", "item": "패딩", "price": 50000}, {"brand": "칼하트", "num": "012", "item": "USA아우터 정품 워크자켓(디트,액티브,산타페,초어) 100,000~", "price": 100000}, {"brand": "스투시", "num": "013", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "스투시", "num": "014", "item": "후드", "price": 15000}, {"brand": "스투시", "num": "015", "item": "맨투맨", "price": 15000}, {"brand": "스투시", "num": "016", "item": "긴발셔츠", "price": 15000}, {"brand": "스투시", "num": "017", "item": "반팔셔츠", "price": 15000}, {"brand": "스투시", "num": "018", "item": "워크팬츠", "price": 20000}, {"brand": "스투시", "num": "019", "item": "청바지", "price": 20000}, {"brand": "스투시", "num": "020", "item": "기타 아우터", "price": 30000}, {"brand": "스투시", "num": "021", "item": "워크자켓50,000~", "price": 50000}, {"brand": "슈프림", "num": "022", "item": "티셔츠/롱슬리브(30,000~부터)", "price": 30000}, {"brand": "슈프림", "num": "023", "item": "후드(50,000~)", "price": 50000}, {"brand": "슈프림", "num": "024", "item": "맨투맨(50,000~)", "price": 50000}, {"brand": "슈프림", "num": "025", "item": "워크팬츠(50,000~)", "price": 50000}, {"brand": "슈프림", "num": "026", "item": "청바지(50,000~)", "price": 50000}, {"brand": "슈프림", "num": "027", "item": "긴발셔츠/반팔(50,000~)", "price": 50000}, {"brand": "슈프림", "num": "028", "item": "워크자켓(100,000~)", "price": 100000}, {"brand": "슈프림", "num": "029", "item": "기타 아우터(100,000~)", "price": 100000}, {"brand": "슈프림", "num": "030", "item": "미정", "price": 0}, {"brand": "폴로", "num": "031", "item": "티셔츠/롱슬리브", "price": 15000}, {"brand": "폴로", "num": "032", "item": "반팔셔츠", "price": 15000}, {"brand": "폴로", "num": "033", "item": "후드", "price": 20000}, {"brand": "폴로", "num": "034", "item": "가디건", "price": 20000}, {"brand": "폴로", "num": "035", "item": "니트", "price": 20000}, {"brand": "폴로", "num": "036", "item": "팬츠", "price": 20000}, {"brand": "폴로", "num": "037", "item": "맨투맨", "price": 20000}, {"brand": "폴로", "num": "038", "item": "긴팔셔츠", "price": 20000}, {"brand": "폴로", "num": "039", "item": "기타 아우터,패딩", "price": 40000}, {"brand": "폴로", "num": "040", "item": "바라쿠다,패딩", "price": 50000}, {"brand": "아베크롬비", "num": "041", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "아베크롬비", "num": "042", "item": "니트", "price": 5000}, {"brand": "아베크롬비", "num": "043", "item": "트레이닝바지", "price": 5000}, {"brand": "아베크롬비", "num": "044", "item": "맨투맨", "price": 5000}, {"brand": "아베크롬비", "num": "045", "item": "청바지,카고", "price": 5000}, {"brand": "아베크롬비", "num": "046", "item": "긴발셔츠,반팔", "price": 10000}, {"brand": "아베크롬비", "num": "047", "item": "후드", "price": 15000}, {"brand": "아베크롬비", "num": "048", "item": "후드2", "price": 20000}, {"brand": "아베크롬비", "num": "049", "item": "기타 아우터", "price": 20000}, {"brand": "리바이스", "num": "050", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "리바이스", "num": "051", "item": "후드", "price": 5000}, {"brand": "리바이스", "num": "052", "item": "반팔/긴팔셔츠", "price": 5000}, {"brand": "리바이스", "num": "053", "item": "면바지/카고/기타넘버", "price": 10000}, {"brand": "리바이스", "num": "054", "item": "엔지니어드,Type1", "price": 10000}, {"brand": "리바이스", "num": "055", "item": "니트", "price": 15000}, {"brand": "리바이스", "num": "056", "item": "501,505,517,550,560,", "price": 15000}, {"brand": "리바이스", "num": "057", "item": "90's (30,000~)", "price": 20000}, {"brand": "리바이스", "num": "058", "item": "실버탭/오렌지탭", "price": 20000}, {"brand": "리바이스", "num": "059", "item": "기타아우터(데님자켓~)", "price": 20000}, {"brand": "리바이스", "num": "060", "item": "빅E,셀비지,66", "price": 30000}, {"brand": "리바이스", "num": "061", "item": "80's,70's", "price": 50000}, {"brand": "챔피온", "num": "062", "item": "티셔츠/롱슬리브", "price": 3000}, {"brand": "챔피온", "num": "063", "item": "후드", "price": 5000}, {"brand": "챔피온", "num": "064", "item": "가디건", "price": 5000}, {"brand": "챔피온", "num": "065", "item": "니트", "price": 5000}, {"brand": "챔피온", "num": "066", "item": "면바지", "price": 5000}, {"brand": "챔피온", "num": "067", "item": "맨투맨", "price": 5000}, {"brand": "챔피온", "num": "068", "item": "긴발셔츠", "price": 10000}, {"brand": "챔피온", "num": "069", "item": "반팔셔츠", "price": 10000}, {"brand": "챔피온", "num": "070", "item": "90's 구분없이", "price": 10000}, {"brand": "챔피온", "num": "071", "item": "기타 아우터", "price": 15000}, {"brand": "팀버랜드", "num": "072", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "팀버랜드", "num": "073", "item": "후드", "price": 5000}, {"brand": "팀버랜드", "num": "074", "item": "가디건", "price": 10000}, {"brand": "팀버랜드", "num": "075", "item": "니트", "price": 10000}, {"brand": "팀버랜드", "num": "076", "item": "청바지", "price": 10000}, {"brand": "팀버랜드", "num": "077", "item": "기타 아우터", "price": 20000}, {"brand": "팀버랜드", "num": "078", "item": "워크자켓", "price": 30000}, {"brand": "팀버랜드", "num": "079", "item": "콜라보(50,000~)", "price": 50000}, {"brand": "팀버랜드", "num": "080", "item": "긴발셔츠", "price": 0}, {"brand": "팀버랜드", "num": "081", "item": "반팔셔츠", "price": 0}, {"brand": "리", "num": "082", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "리", "num": "083", "item": "후드", "price": 5000}, {"brand": "리", "num": "084", "item": "가디건", "price": 5000}, {"brand": "리", "num": "085", "item": "니트", "price": 5000}, {"brand": "리", "num": "086", "item": "청자켓 (90's~80's~70's~)", "price": 30000}, {"brand": "리", "num": "087", "item": "청바지 (90's~80's~70's~)", "price": 30000}, {"brand": "리", "num": "088", "item": "기타 아우터", "price": 30000}, {"brand": "리", "num": "089", "item": "긴발셔츠 반팔셔츠", "price": 5000}, {"brand": "리", "num": "090", "item": "미정", "price": 0}, {"brand": "파타고니아", "num": "091", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "파타고니아", "num": "092", "item": "후드", "price": 10000}, {"brand": "파타고니아", "num": "093", "item": "가디건", "price": 30000}, {"brand": "파타고니아", "num": "094", "item": "니트", "price": 30000}, {"brand": "파타고니아", "num": "095", "item": "플리스", "price": 30000}, {"brand": "파타고니아", "num": "096", "item": "긴발셔츠(반팔)", "price": 30000}, {"brand": "파타고니아", "num": "097", "item": "신칠라 (50,000~)", "price": 50000}, {"brand": "파타고니아", "num": "098", "item": "기타 아우터(50,000~)", "price": 50000}, {"brand": "파타고니아", "num": "099", "item": "미정", "price": 0}, {"brand": "랭글러", "num": "100", "item": "맨투맨", "price": 5000}, {"brand": "랭글러", "num": "101", "item": "티셔츠/롱슬리브", "price": 10000}, {"brand": "랭글러", "num": "102", "item": "청자켓", "price": 15000}, {"brand": "랭글러", "num": "103", "item": "청바지", "price": 15000}, {"brand": "랭글러", "num": "104", "item": "후드", "price": 20000}, {"brand": "랭글러", "num": "105", "item": "긴발셔츠/반팔셔츠", "price": 20000}, {"brand": "랭글러", "num": "106", "item": "기타 아우터", "price": 30000}, {"brand": "랭글러", "num": "107", "item": "70's,80's,90's", "price": 30000}, {"brand": "랭글러", "num": "108", "item": "가디건", "price": 0}, {"brand": "타미힐피거90's", "num": "109", "item": "PK", "price": 5000}, {"brand": "타미힐피거90's", "num": "110", "item": "빅로고티셔츠", "price": 5000}, {"brand": "타미힐피거90's", "num": "111", "item": "럭비티", "price": 10000}, {"brand": "타미힐피거90's", "num": "112", "item": "후드/바람막이", "price": 10000}, {"brand": "타미힐피거90's", "num": "113", "item": "긴발셔츠/반팔셔츠", "price": 10000}, {"brand": "타미힐피거90's", "num": "114", "item": "니트", "price": 20000}, {"brand": "타미힐피거90's", "num": "115", "item": "올드스쿨", "price": 20000}, {"brand": "타미힐피거90's", "num": "116", "item": "기타 아우터", "price": 20000}, {"brand": "타미힐피거90's", "num": "117", "item": "가죽", "price": 30000}, {"brand": "디키즈", "num": "118", "item": "티셔츠/롱슬리브", "price": 5000}, {"brand": "디키즈", "num": "119", "item": "맨투맨/후드", "price": 5000}, {"brand": "디키즈", "num": "120", "item": "긴팔셔츠/반팔", "price": 5000}, {"brand": "디키즈", "num": "121", "item": "니트", "price": 10000}, {"brand": "디키즈", "num": "122", "item": "청자켓", "price": 10000}, {"brand": "디키즈", "num": "123", "item": "워크팬츠(874,더블니등)", "price": 10000}, {"brand": "디키즈", "num": "124", "item": "기타 아우터", "price": 15000}, {"brand": "디키즈", "num": "125", "item": "워크자켓(디트,아이젠,트윌,초어)", "price": 25000}, {"brand": "디키즈", "num": "126", "item": "미정", "price": 0}, {"brand": "에비수", "num": "127", "item": "티셔츠", "price": 5000}, {"brand": "에비수", "num": "128", "item": "후드,긴팔셔츠", "price": 10000}, {"brand": "에비수", "num": "129", "item": "청바지", "price": 15000}, {"brand": "에비수", "num": "130", "item": "아우터", "price": 20000}, {"brand": "에비수", "num": "131", "item": "JP", "price": 20000}, {"brand": "에비수", "num": "132", "item": "청자켓", "price": 30000}, {"brand": "에드윈", "num": "133", "item": "진셔츠(청남방)", "price": 10000}, {"brand": "에드윈", "num": "134", "item": "청바지 503,507,423,402,404,601,101등", "price": 15000}, {"brand": "에드윈", "num": "135", "item": "청자켓", "price": 20000}, {"brand": "에드윈", "num": "136", "item": "505Z셀비지", "price": 20000}, {"brand": "트루릴리전", "num": "137", "item": "니트", "price": 10000}, {"brand": "트루릴리전", "num": "138", "item": "후드", "price": 10000}, {"brand": "트루릴리전", "num": "139", "item": "청바지(남)", "price": 15000}, {"brand": "트루릴리전", "num": "140", "item": "청바지(여)", "price": 10000}, {"brand": "스타터", "num": "141", "item": "티셔츠", "price": 5000}, {"brand": "스타터", "num": "142", "item": "청바지", "price": 5000}, {"brand": "스타터", "num": "143", "item": "아우터", "price": 10000}, {"brand": "스타터", "num": "144", "item": "후드", "price": 8000}, {"brand": "스타터", "num": "145", "item": "긴팔셔츠(반팔)", "price": 5000}, {"brand": "GAP", "num": "146", "item": "티셔츠,후드,맨투,긴팔셔츠,반팔셔츠", "price": 5000}, {"brand": "GAP", "num": "147", "item": "레더", "price": 50000}, {"brand": "GAP", "num": "148", "item": "청바지", "price": 10000}, {"brand": "GAP", "num": "149", "item": "아우터", "price": 30000}, {"brand": "GAP", "num": "150", "item": "콜라보(Yeezy)", "price": 30000}, {"brand": "게스", "num": "151", "item": "티셔츠", "price": 5000}, {"brand": "게스", "num": "152", "item": "후드", "price": 10000}, {"brand": "게스", "num": "153", "item": "맨투맨", "price": 10000}, {"brand": "게스", "num": "154", "item": "청바지", "price": 30000}, {"brand": "게스", "num": "155", "item": "아우터", "price": 30000}, {"brand": "게스", "num": "156", "item": "긴팔셔츠/반팔", "price": 10000}, {"brand": "할리데이비슨", "num": "157", "item": "후드", "price": 30000}, {"brand": "할리데이비슨", "num": "158", "item": "티셔츠", "price": 20000}, {"brand": "할리데이비슨", "num": "159", "item": "롱슬리브", "price": 30000}, {"brand": "할리데이비슨", "num": "160", "item": "맨투맨", "price": 30000}, {"brand": "할리데이비슨", "num": "161", "item": "아우터(100,000~)", "price": 50000}, {"brand": "할리데이비슨", "num": "162", "item": "레더자켓(200,000~)", "price": 200000}, {"brand": "할리데이비슨", "num": "163", "item": "청바지", "price": 20000}, {"brand": "할리데이비슨", "num": "164", "item": "레더팬츠(50,000~)", "price": 50000}, {"brand": "아비렉스", "num": "165", "item": "청바지", "price": 20000}, {"brand": "아비렉스", "num": "166", "item": "카고바지", "price": 30000}, {"brand": "아비렉스", "num": "167", "item": "미정", "price": 50000}, {"brand": "아비렉스", "num": "168", "item": "레더 아우터100,000~", "price": 100000}, {"brand": "아비렉스", "num": "169", "item": "기타 아우터50,000~", "price": 50000}, {"brand": "아비렉스", "num": "170", "item": "미정", "price": 0}, {"brand": "나이키", "num": "171", "item": "기타", "price": 5000}, {"brand": "나이키", "num": "172", "item": "90's", "price": 10000}, {"brand": "아디다스", "num": "173", "item": "기타", "price": 5000}, {"brand": "아디다스", "num": "174", "item": "90's", "price": 10000}, {"brand": "ACG", "num": "175", "item": "티셔츠", "price": 20000}, {"brand": "ACG", "num": "176", "item": "바지", "price": 20000}, {"brand": "ACG", "num": "177", "item": "상의(바막,자켓,후드,맨투맨)", "price": 30000}, {"brand": "ACG", "num": "178", "item": "패딩,후리스", "price": 50000}, {"brand": "알파인더스트리", "num": "179", "item": "아우터", "price": 50000}, {"brand": "노스페이스", "num": "180", "item": "바람막이", "price": 20000}, {"brand": "노스페이스", "num": "181", "item": "패딩", "price": 30000}, {"brand": "노스페이스", "num": "182", "item": "히말라야", "price": 100000}, {"brand": "노스페이스", "num": "183", "item": "가디건", "price": 20000}, {"brand": "노스페이스", "num": "184", "item": "미정", "price": 0}, {"brand": "바버", "num": "185", "item": "아우터", "price": 50000}, {"brand": "바버", "num": "186", "item": "퀄팅", "price": 50000}, {"brand": "반스", "num": "187", "item": "티셔츠", "price": 5000}, {"brand": "반스", "num": "188", "item": "후드", "price": 5000}, {"brand": "반스", "num": "189", "item": "바지", "price": 5000}, {"brand": "반스", "num": "190", "item": "아우터", "price": 15000}, {"brand": "기타 레더", "num": "191", "item": "보세", "price": 30000}, {"brand": "기타 인조가죽", "num": "192", "item": "브랜드,보세포함", "price": 15000}, {"brand": "스톤아일랜드", "num": "193", "item": "맨투맨", "price": 50000}, {"brand": "스톤아일랜드", "num": "194", "item": "아우터", "price": 50000}, {"brand": "스톤아일랜드", "num": "195", "item": "미정", "price": 0}, {"brand": "CP컴퍼니", "num": "196", "item": "맨투맨", "price": 50000}, {"brand": "CP컴퍼니", "num": "197", "item": "아우터", "price": 100000}, {"brand": "Y-3", "num": "198", "item": "티셔츠", "price": 30000}, {"brand": "Y-3", "num": "199", "item": "아우터", "price": 100000}, {"brand": "버버리S", "num": "200", "item": "코트 솔", "price": 40000}, {"brand": "버버리S", "num": "201", "item": "코트 더블", "price": 70000}, {"brand": "버버리S", "num": "202", "item": "니트", "price": 50000}, {"brand": "버버리", "num": "203", "item": "코트 솔", "price": 40000}, {"brand": "버버리", "num": "204", "item": "코트 더블", "price": 70000}, {"brand": "버버리", "num": "205", "item": "니트", "price": 50000}, {"brand": "루츠캐나다", "num": "206", "item": "전부", "price": 5000}, {"brand": "라코스테", "num": "207", "item": "카라티", "price": 5000}, {"brand": "라코스테", "num": "208", "item": "니트", "price": 10000}, {"brand": "오베이", "num": "209", "item": "티셔츠", "price": 5000}, {"brand": "오베이", "num": "210", "item": "맨투", "price": 10000}, {"brand": "오베이", "num": "211", "item": "후드", "price": 10000}, {"brand": "데우스엑스마키나", "num": "212", "item": "티셔츠", "price": 5000}, {"brand": "데우스엑스마키나", "num": "213", "item": "후드", "price": 10000}, {"brand": "데우스엑스마키나", "num": "214", "item": "맨투맨", "price": 10000}, {"brand": "숏트NYC", "num": "215", "item": "항공털 B-3", "price": 100000}, {"brand": "숏트NYC", "num": "216", "item": "항공레더A-2", "price": 200000}, {"brand": "숏트NYC", "num": "217", "item": "항공나일론MA-1", "price": 100000}, {"brand": "올드스쿨 행거", "num": "218", "item": "아우터", "price": 10000}, {"brand": "올드스쿨 행거", "num": "219", "item": "니트", "price": 5000}, {"brand": "올드스쿨 행거", "num": "220", "item": "바지", "price": 5000}, {"brand": "엄브로바람막이", "num": "221", "item": "미정", "price": 5000}, {"brand": "아메리칸이글긴팔셔츠", "num": "222", "item": "미정", "price": 5000}, {"brand": "크로커다일아우터", "num": "223", "item": "미정", "price": 5000}, {"brand": "홀리스터데님자켓", "num": "224", "item": "미정", "price": 5000}, {"brand": "긴바지", "num": "225", "item": "미정", "price": 5000}, {"brand": "엠엘비아우터", "num": "226", "item": "미정", "price": 10000}, {"brand": "폴로롱슬리브", "num": "227", "item": "미정", "price": 10000}, {"brand": "인디안모터사이클컴퍼니아우터", "num": "228", "item": "미정", "price": 10000}, {"brand": "에디바우어니트", "num": "229", "item": "미정", "price": 10000}, {"brand": "트루릴리젼데님자켓", "num": "230", "item": "미정", "price": 10000}, {"brand": "아크테릭스반팔티", "num": "231", "item": "미정", "price": 10000}, {"brand": "타미힐피거아우터", "num": "232", "item": "미정", "price": 15000}, {"brand": "노스페이스(퍼플라벨)긴팔셔츠", "num": "233", "item": "미정", "price": 15000}, {"brand": "데일노르웨이니트", "num": "234", "item": "미정", "price": 20000}, {"brand": "휴고 보스아우터", "num": "235", "item": "미정", "price": 20000}, {"brand": "할리데이비슨반팔셔츠", "num": "236", "item": "미정", "price": 20000}, {"brand": "라코스테아우터", "num": "237", "item": "미정", "price": 20000}, {"brand": "라코스테아우터", "num": "238", "item": "미정", "price": 20000}, {"brand": "가죽자켓", "num": "239", "item": "미정", "price": 20000}, {"brand": "벤데이비스아우터", "num": "240", "item": "미정", "price": 30000}, {"brand": "제레미스캇아우터", "num": "241", "item": "미정", "price": 40000}, {"brand": "단톤아우터", "num": "242", "item": "미정", "price": 50000}, {"brand": "겐조후드티", "num": "243", "item": "미정", "price": 50000}];
+
+// ══ SOUND ══
+let _audioCtx;
+function playTick() {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.06);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
+
+// ══ STATE ══
+// log entry: {seq, num, brand, item, price}
+// hanger: {name, log:[...]}
+let S = {
+  hangers: [],
+  cur: { name: '', log: [] },
+  items: JSON.parse(JSON.stringify(MASTER))
+};
+
+function save() {
+  try { localStorage.setItem('charan2', JSON.stringify(S)); } catch(e) {}
+}
+function load() {
+  try {
+    const d = localStorage.getItem('charan2');
+    if (d) S = JSON.parse(d);
+    if (!S.items || S.items.length < 10) S.items = JSON.parse(JSON.stringify(MASTER));
+  } catch(e) {}
+}
+
+function itemByNum(num) { return S.items.find(i => i.num === num); }
+function nextNum() {
+  const nums = S.items.map(i => parseInt(i.num)).filter(n => !isNaN(n));
+  return String(Math.max(...nums) + 1).padStart(3,'0');
+}
+function totalLog() {
+  return S.hangers.reduce((a,h) => a + h.log.length, 0) + S.cur.log.length;
+}
+
+// ══ HOME ══
+function initHome() {
+  const hasCur = !!(S.cur.name);
+  const hasDone = S.hangers.length > 0;
+
+  // 이어하기: 진행중인 행거만
+  const rc = document.getElementById('resume-card');
+  rc.style.display = hasCur ? 'block' : 'none';
+  if (hasCur) {
+    document.getElementById('resume-info').textContent = `"${S.cur.name}" 진행중`;
+    document.getElementById('resume-sub').textContent = `${S.cur.log.length}개 기록됨`;
+  }
+
+  // 완료 행거 정보
+  const dc = document.getElementById('done-card');
+  dc.style.display = hasDone ? 'block' : 'none';
+  if (hasDone) {
+    const total = S.hangers.reduce((a,h) => a + h.log.length, 0);
+    document.getElementById('done-info').textContent = `${S.hangers.length}개 행거 · ${total}개 기록`;
+  }
+
+  document.getElementById('h-name-in').value = '';
+}
+
+function resumeSession() {
+  if (S.cur.name) showCount();
+  else document.getElementById('h-name-in').focus();
+}
+
+function startHanger() {
+  const name = document.getElementById('h-name-in').value.trim();
+  if (!name) { toast('행거명을 입력해주세요'); return; }
+  if (S.hangers.find(h => h.name === name)) {
+    toast(`⚠ "${name}"은 이미 완료된 행거입니다`); return;
+  }
+  if (S.cur.name && S.cur.name !== name) {
+    toast(`⚠ 진행중인 "${S.cur.name}"을 먼저 완료해주세요`); return;
+  }
+  S.cur = { name, log: S.cur.name === name ? S.cur.log : [] };
+  save();
+  showCount();
+}
+
+function goHome() { showScr('home'); initHome(); }
+let _clearArmed = false, _clearTimer;
+function clearAll() {
+  const btn = document.getElementById('clear-btn-el');
+  if (!_clearArmed) {
+    _clearArmed = true;
+    btn.textContent = '⚠ 한 번 더 누르면 초기화됩니다';
+    btn.style.background = 'var(--danger)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--danger)';
+    _clearTimer = setTimeout(() => {
+      _clearArmed = false;
+      btn.textContent = '⚠ 세션 초기화';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 3000);
+    return;
+  }
+  clearTimeout(_clearTimer);
+  _clearArmed = false;
+  localStorage.removeItem('charan2');
+  S = { hangers: [], cur: { name: '', log: [] }, items: JSON.parse(JSON.stringify(MASTER)) };
+  showScr('home');
+  initHome();
+  toast('✅ 세션 초기화 완료', true);
+}
+
+// ══ COUNT SCREEN ══
+function showCount() {
+  showScr('count');
+  document.getElementById('cnt-hanger-lbl').textContent = S.cur.name;
+  document.getElementById('search-in').value = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  renderBrands('');
+  updateHeader();
+}
+
+// ── Render brands ──
+function renderBrands(q) {
+  const container = document.getElementById('brand-list');
+  const ql = q.toLowerCase();
+
+  // Group
+  const brandMap = {};
+  for (const it of S.items) {
+    if (!brandMap[it.brand]) brandMap[it.brand] = [];
+    brandMap[it.brand].push(it);
+  }
+
+  // Count per item in current log
+  const logCounts = {};
+  for (const e of S.cur.log) logCounts[e.num] = (logCounts[e.num] || 0) + 1;
+
+  let html = '';
+
+  if (ql) {
+    // Flat filtered list
+    const matched = S.items.filter(it =>
+      it.brand.toLowerCase().includes(ql) ||
+      it.item.toLowerCase().includes(ql) ||
+      it.num.includes(q)
+    );
+    if (matched.length === 0) {
+      html = '<div class="empty-state"><div class="empty-icon">🔍</div>검색 결과 없음</div>';
+    } else {
+      html = matched.map(it => itemRowHtml(it, logCounts[it.num] || 0)).join('');
+    }
+  } else {
+    for (const [brand, items] of Object.entries(brandMap)) {
+      const brandTotal = items.reduce((s, i) => s + (logCounts[i.num] || 0), 0);
+      const isOpen = brandTotal > 0;
+      const bkey = brand.replace(/[^\w가-힣]/g, '_');
+      html += `<div class="bg ${isOpen ? 'open' : ''}" id="bg_${bkey}">`;
+      html += `<div class="bg-hdr" onclick="toggleBrand(this.parentElement)">`;
+      html += `<span class="bg-name">${brand}</span>`;
+      html += `<span class="bg-right">`;
+      html += `<span class="bg-cnt ${brandTotal > 0 ? 'on' : ''}" id="bc_${bkey}">${brandTotal}</span>`;
+      html += `<span class="bg-arr">▼</span>`;
+      html += `</span></div>`;
+      html += `<div class="bg-items">`;
+      html += items.map(it => itemRowHtml(it, logCounts[it.num] || 0)).join('');
+      html += `</div></div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+function itemRowHtml(it, cnt) {
+  return `<div class="ir ${cnt > 0 ? 'tapped' : ''}" id="ir_${it.num}" onclick="tapItem('${it.num}')">
+    <span class="ir-num">${it.num}</span>
+    <div class="ir-info">
+      <div class="ir-name">${it.item}</div>
+      <div class="ir-price">${it.brand} · ${it.price.toLocaleString()}원</div>
+    </div>
+    <span class="${tagClass(cnt)}" id="it_${it.num}">${tagLabel(cnt)}</span>
+  </div>`;
+}
+
+function tagLabel(cnt) { return cnt === 0 ? '·' : cnt === 1 ? '✓' : cnt; }
+function tagClass(cnt) { return 'ir-tag' + (cnt === 0 ? ' zero' : cnt === 1 ? ' once' : ''); }
+function toggleBrand(el) { el.classList.toggle('open'); }
+
+// ── Tap ──
+function tapItem(num) {
+  const it = itemByNum(num);
+  if (!it) return;
+  const seq = S.cur.log.length + 1;
+  S.cur.log.push({ seq, num, brand: it.brand, item: it.item, price: it.price });
+  save();
+  playTick();
+
+  // Update DOM
+  const cnt = S.cur.log.filter(e => e.num === num).length;
+  const tagEl = document.getElementById(`it_${num}`);
+  const rowEl = document.getElementById(`ir_${num}`);
+  if (tagEl) { tagEl.textContent = tagLabel(cnt); tagEl.className = tagClass(cnt); }
+  if (rowEl) { rowEl.classList.add('tapped'); rowEl.classList.remove('flash'); void rowEl.offsetWidth; rowEl.classList.add('flash'); }
+
+  // Update brand badge
+  const bkey = it.brand.replace(/[^\w가-힣]/g, '_');
+  const bcEl = document.getElementById(`bc_${bkey}`);
+  if (bcEl) {
+    const logCounts = {};
+    for (const e of S.cur.log) logCounts[e.num] = (logCounts[e.num]||0)+1;
+    const brandItems = S.items.filter(i => i.brand === it.brand);
+    const total = brandItems.reduce((s,i) => s + (logCounts[i.num]||0), 0);
+    bcEl.textContent = total;
+    bcEl.classList.toggle('on', total > 0);
+  }
+
+  updateHeader();
+  updateRecent();
+  toast(`${num} · ${it.item}`, true);
+}
+
+function updateHeader() {
+  const n = S.cur.log.length;
+  document.getElementById('cnt-badge').textContent = n;
+  document.getElementById('bot-log-cnt').textContent = n;
+}
+
+function updateRecent() {
+  const strip = document.getElementById('recent-strip');
+  const log = S.cur.log;
+
+  strip.innerHTML = '<span class="recent-label">최근</span>';
+
+  if (log.length === 0) {
+    const empty = document.createElement('span');
+    empty.style.cssText = 'font-size:11px;color:var(--dim2);align-self:center;';
+    empty.textContent = '탭하면 여기 표시돼요';
+    strip.appendChild(empty);
+    return;
+  }
+
+  // Last 10 entries in reverse order (newest first, duplicates included)
+  const recent = log.slice(-10).reverse();
+  for (const e of recent) {
+    const chip = document.createElement('div');
+    chip.className = 'recent-chip';
+    chip.onclick = () => tapItem(e.num);
+    chip.innerHTML = `<span class="rc-num">${e.num}</span><span class="rc-name">${e.item}</span>`;
+    strip.appendChild(chip);
+  }
+}
+
+function undoLast() {
+  if (S.cur.log.length === 0) { toast('취소할 기록이 없습니다'); return; }
+  const last = S.cur.log.pop();
+  save();
+
+  // Update tag
+  const cnt = S.cur.log.filter(e => e.num === last.num).length;
+  const tagEl = document.getElementById(`it_${last.num}`);
+  const rowEl = document.getElementById(`ir_${last.num}`);
+  if (tagEl) { tagEl.textContent = tagLabel(cnt); tagEl.className = tagClass(cnt); }
+  if (rowEl) rowEl.classList.toggle('tapped', cnt > 0);
+
+  // Brand badge
+  const bkey = last.brand.replace(/[^\w가-힣]/g, '_');
+  const bcEl = document.getElementById(`bc_${bkey}`);
+  if (bcEl) {
+    const logCounts = {};
+    for (const e of S.cur.log) logCounts[e.num] = (logCounts[e.num]||0)+1;
+    const brandItems = S.items.filter(i => i.brand === last.brand);
+    const total = brandItems.reduce((s,i) => s + (logCounts[i.num]||0), 0);
+    bcEl.textContent = total;
+    bcEl.classList.toggle('on', total > 0);
+  }
+
+  updateHeader();
+  updateRecent();
+  toast(`↩ ${last.num} 취소`);
+}
+
+function onSearch() {
+  const q = document.getElementById('search-in').value;
+  document.getElementById('clear-btn').style.display = q ? 'block' : 'none';
+  renderBrands(q);
+}
+function clearSearch() {
+  document.getElementById('search-in').value = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  renderBrands('');
+}
+
+function completeHanger() {
+  if (S.cur.log.length === 0) { toast('기록된 항목이 없습니다'); return; }
+  S.hangers.push({ name: S.cur.name, log: [...S.cur.log] });
+  const name = S.cur.name;
+  const cnt = S.cur.log.length;
+  S.cur = { name: '', log: [] };
+  save();
+  toast(`✅ "${name}" ${cnt}개 완료!`, true);
+  goHome();
+}
+
+// ══ LOG PANEL ══
+function openLogPanel() {
+  document.getElementById('log-hanger-name').textContent = S.cur.name;
+  const list = document.getElementById('log-list');
+  const log = S.cur.log;
+  if (log.length === 0) {
+    list.innerHTML = '<div class="log-empty">아직 기록이 없어요<br>품목을 탭해보세요</div>';
+  } else {
+    // newest on top
+    list.innerHTML = [...log].reverse().map(e => `
+      <div class="log-row">
+        <span class="log-seq">${String(e.seq).padStart(2,'0')}</span>
+        <span class="log-num">${e.num}</span>
+        <div class="log-info">
+          <div class="log-brand">${e.brand}</div>
+          <div class="log-name">${e.item}</div>
+        </div>
+        <div class="log-price">${e.price.toLocaleString()}원</div>
+      </div>`).join('');
+  }
+  document.getElementById('log-overlay').classList.add('on');
+}
+function closeLogPanel() { document.getElementById('log-overlay').classList.remove('on'); }
+function onLogOverlayClick(e) { if (e.target === document.getElementById('log-overlay')) closeLogPanel(); }
+
+// ══ SUMMARY ══
+function goSummary() { showScr('summary'); renderSummary(); }
+function backFromSummary() {
+  if (S.cur.name) showCount(); else { showScr('home'); initHome(); }
+}
+function renderSummary() {
+  const all = [...S.hangers];
+  if (S.cur.name && S.cur.log.length > 0) all.push({name: S.cur.name + ' (진행중)', log: S.cur.log, inProg: true});
+  const totalEntries = all.reduce((a,h) => a + h.log.length, 0);
+  document.getElementById('sum-sub').textContent = `${all.length}개 행거 · 총 ${totalEntries}개`;
+  const el = document.getElementById('sum-list');
+  if (all.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>아직 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = all.map((h,i) => `
+    <div class="hcard" id="hc${i}">
+      <div class="hcard-hdr" onclick="toggleHCard(${i})">
+        <div>
+          <div class="hcard-name">${h.name}</div>
+          <div class="hcard-meta">${h.log.length}개 기록</div>
+        </div>
+        <span class="hcard-badge">${h.log.length}</span>
+      </div>
+      <div class="hcard-body">
+        ${h.log.map(e => `
+          <div class="hlog-row">
+            <span class="hlog-seq">${String(e.seq).padStart(2,'0')}</span>
+            <span class="hlog-num">${e.num}</span>
+            <div class="hlog-name">${e.brand} · ${e.item}</div>
+            <div class="hlog-price">${e.price.toLocaleString()}원</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleHCard(i) { document.getElementById(`hc${i}`).classList.toggle('open'); }
+
+// ══ ADD MODAL ══
+function openAddModal() {
+  document.getElementById('add-num').value = nextNum();
+  document.getElementById('add-brand').value = '';
+  document.getElementById('add-item').value = '';
+  document.getElementById('add-price').value = '';
+  document.getElementById('modal-add').classList.add('on');
+  setTimeout(() => document.getElementById('add-brand').focus(), 100);
+}
+function closeAddModal() { document.getElementById('modal-add').classList.remove('on'); }
+function onModalClick(e) { if (e.target === document.getElementById('modal-add')) closeAddModal(); }
+function confirmAdd() {
+  const brand = document.getElementById('add-brand').value.trim();
+  const num = document.getElementById('add-num').value.trim();
+  const item = document.getElementById('add-item').value.trim() || '미정';
+  const price = parseInt(document.getElementById('add-price').value) || 0;
+  if (!brand) { toast('브랜드명 필요'); return; }
+  if (!num || S.items.find(i => i.num === num)) { toast('번호 중복 또는 누락'); return; }
+  S.items.push({brand, num, item, price});
+  save();
+  closeAddModal();
+  renderBrands(document.getElementById('search-in').value);
+  toast(`✅ ${num} · ${item} 추가됨`, true);
+}
+
+// ══ EXCEL ══
+function getNamePrefix() {
+  // Get first hanger name, extract part before the last '-숫자'
+  const name = (S.hangers[0]?.name || S.cur.name || '').trim();
+  // Split on '-' and drop last segment if it's a number
+  const parts = name.split('-');
+  if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1].trim())) {
+    return parts.slice(0, -1).join('-').trim();
+  }
+  return name || '차란';
+}
+function todayStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}${mm}${dd}`;
+}
+function downloadExcel() {
+  const all = [...S.hangers];
+  if (S.cur.name && S.cur.log.length > 0) all.push({name: S.cur.name + '(진행중)', log: S.cur.log});
+  if (all.length === 0) { toast('다운로드할 데이터 없음'); return; }
+  const rows = [['행거명','순번','우리번호','브랜드','품목','단가']];
+  for (const h of all) {
+    for (const e of h.log) {
+      rows.push([h.name, e.seq, e.num, e.brand, e.item, e.price]);
+    }
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:6},{wch:8},{wch:16},{wch:24},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, '순번기록');
+  XLSX.writeFile(wb, `차란_${getNamePrefix()}_${todayStr()}.xlsx`);
+  toast('⬇ 엑셀 저장!', true);
+}
+
+// ══ SCREEN ══
+function showScr(id) {
+  document.querySelectorAll('.scr').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ══ TOAST ══
+let tTimer;
+function toast(msg, acc = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (acc ? ' acc' : '');
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(tTimer);
+  tTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ══ INIT ══
+load();
+if (!S.items || S.items.length < 10) S.items = JSON.parse(JSON.stringify(MASTER));
+initHome();
+
+document.getElementById('h-name-in').addEventListener('keydown', e => { if (e.key === 'Enter') startHanger(); });
+</script>
+</body>
+</html>
